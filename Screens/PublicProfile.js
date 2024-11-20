@@ -1,13 +1,27 @@
 import { StyleSheet, Text, View, ScrollView, Image, TouchableOpacity } from 'react-native';
 import React, { useState, useEffect } from 'react';
-import { database, ref, get } from '../firebase';
+import { database, ref, get, push, set } from '../firebase';
+import { getAuth } from 'firebase/auth';
 import { Feather } from '@expo/vector-icons';
+import { Rating } from 'react-native-ratings';
 
 export default function PublicProfile({ route }) {
+
   const { userData } = route.params;  
   const [userDataState, setUserDataState] = useState(null);
   const [petData, setPetData] = useState([]);
   const [isHoitaja, setIsHoitaja] = useState(false);
+
+  
+  const [ratingCount, setRatingCount] = useState(0);
+  const [averageRating, setAverageRating] = useState(0);
+/*  const [ratingInfo, setRatingInfo] = useState(false);
+  const [RatingData, setRatingData] = useState([]);
+  const [newRatingData, setNewRatingData] = useState({
+    email: '',
+    
+  });*/
+  const auth = getAuth();
 
   useEffect(() => {
     if (!userData) {
@@ -72,8 +86,97 @@ export default function PublicProfile({ route }) {
     }
   };
 
+  //ARVOSTELU
+  useEffect(() => {
+    console.log("userData ennen tarkistusta:", userData);
+    if (!userData) {
+      console.error("Virhe: käyttäjän sähköposti puuttuu.");
+      return; 
+    }
+    
+    console.log("suoritetaan useEffect");
+
+    const fetchRatingData = async (email) => {
+      console.log(email)
+    const ratedUserEmailFormatted = userData.replace(/\./g, '_');
+    const ratingsRef = ref(database, `users/${ratedUserEmailFormatted}/ratings`)
+    console.log("RatingsRef:", ratingsRef);
+    
+    
+    try {
+      console.log("Ennen get-kutsua");
+      const snapshot = await get(ratingsRef);
+      if (snapshot.exists()) {
+        console.log("Tietoja löytyi:", snapshot.val());
+        console.log("Haettu RatingData:", RatingData);
+        const RatingData = snapshot.val()
+        const ratingEntries = Object.values(RatingData);
+        console.log(RatingData)
+
+        const count = ratingEntries.length;
+        setRatingCount(count)
+
+        const totalRating = ratingEntries.reduce((sum, ratingData) => sum + ratingData.rating, 0);
+        const average = totalRating / count;
+        setAverageRating(average);
+        console.log(average)
+      }else {
+        setRatingCount(0);
+        setAverageRating(0);
+        console.log("ei toimi oikein")
+        console.log("Tietoja ei löytynyt.");
+      }
+    } catch(error) {
+      console.error('Virhe arvostelujen haussa', error)
+      setRatingCount(0);
+      setAverageRating(0);
+    }
+    
+    }
+    fetchRatingData();
+   
+
+  }, [userData])
+
+
+  const handleRating = async (rating) => {
+    try {
+      console.log('Tallennettava rating:', rating);
+  
+      const user = auth.currentUser;
+      if (!user) {
+        alert('Käyttäjä ei ole kirjautunut sisään.');
+        return;
+      }
+  
+      const ratedUserEmailFormatted = userData.replace(/\./g, '_');
+      const raterUserEmailFormatted = user.email.replace(/\./g, '_');
+      const ratingRef = ref(database, `users/${ratedUserEmailFormatted}/ratings/${raterUserEmailFormatted}`);
+      //const newRatingRef = push(ratingsRef);
+
+      await set(ratingRef, {
+        rating: rating, 
+      });
+  
+      console.log('Rating tallennettu onnistuneesti');
+      alert('Arvostelu tallennettu onnistuneesti!');
+    } catch (error) {
+      console.error('Virhe tallennettaessa ratingia:', error);
+      alert('Arvostelun tallennus epäonnistui.');
+    }
+  };
+
+
+ 
+
+
+
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.title}>{auth.currentUser?.email}</Text>
+      <Text style={styles.title}>{userData}</Text>
+      
       {/* Profiilikuva */}
       <View style={styles.profileImageContainer}>
         {userDataState?.profileImage ? (
@@ -112,6 +215,21 @@ export default function PublicProfile({ route }) {
           {isHoitaja ? 'Ilmoittautunut hoitajaksi' : 'Ei ole ilmoittautunut hoitajaksi'}
         </Text>
       </View>
+      <View style={styles.section}>
+        <View style={styles.headerContainerRating}>
+          <Text style={styles.sectionTitle}>Arvostelut</Text>
+          <Text>Arvosteluja: {ratingCount}</Text>
+          <Rating
+           type='star'
+           ratingCount={5}
+           startingValue={averageRating}
+           imageSize={40}
+           showRating
+           onFinishRating={handleRating}
+/>
+<Text>Kerkiarvo: {averageRating}</Text>
+        </View>
+        </View>
   
     </ScrollView>
   );
@@ -178,5 +296,9 @@ const styles = StyleSheet.create({
   hoitajaText: {
     fontSize: 20,
     marginLeft: 15,
+    marginBottom:15,
+  },
+  headerContainerRating:{
+  
   },
 });

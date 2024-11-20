@@ -5,6 +5,7 @@ import { database, ref, set, update, get, push, remove } from '../firebase';
 import { useFonts } from 'expo-font';
 import Feather from '@expo/vector-icons/Feather';
 import { pickImage, takePhoto, saveProfileImage, fetchProfileImage } from "../Components/ProfileFunctions";
+import { Rating } from 'react-native-ratings';
 
 export default function ProfileScreen({ navigation }) {
   const [loaded] = useFonts({
@@ -15,8 +16,11 @@ export default function ProfileScreen({ navigation }) {
 
   if (!loaded) {return null;}
 
+ 
+
   const auth = getAuth();
   const [isHoitaja, setIsHoitaja] = useState(false);
+  const [rating, setRating] = useState([])
 
   const [userInfo, setUserInfo] = useState(false); 
   const [userData, setUserData] = useState({
@@ -188,7 +192,6 @@ export default function ProfileScreen({ navigation }) {
     const toggleHoitajaStatus = () => {
       setIsHoitaja((prevStatus) => {
         const newStatus = !prevStatus;
-        // Tallennetaan uusi tila Firebaseen
         const user = auth.currentUser;
         if (user) {
           const userEmail = user.email.replace(/\./g, '_');
@@ -200,6 +203,8 @@ export default function ProfileScreen({ navigation }) {
         }
         return newStatus;
       })}
+
+      
 
 
 
@@ -350,13 +355,7 @@ export default function ProfileScreen({ navigation }) {
           </TouchableOpacity>
         </View>
         </View>
-        <View style={styles.section}>
-        <View style={styles.headerContainer}>
-          <Text style={styles.sectionTitle}>Arvostelut</Text>
-          <TouchableOpacity onPress={() => setUserInfo(true)}>  
-          </TouchableOpacity>
-        </View>
-        </View>
+
         <TouchableOpacity style={styles.actionButton}>
         <Text style={styles.actionButtonText}>Poista Käyttäjä</Text>
       </TouchableOpacity>
@@ -375,7 +374,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     color: '#000000',
     textAlign: 'center',
-    fontFamily:'DeliusSwashCaps'
+    //fontFamily:'DeliusSwashCaps'
   },
   profileImageContainer: {
     alignItems: 'center',
@@ -400,7 +399,7 @@ const styles = StyleSheet.create({
     color: '#000000',
     fontSize: 14,
     //fontWeight: '500',
-    fontFamily:'DeliusSwashCaps'
+    //fontFamily:'DeliusSwashCaps'
   },
   section: {
     marginBottom: 20,
@@ -417,18 +416,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },headerContainerRating:{
+
   },
   sectionTitle: {
     fontSize: 18,
     //fontWeight: 'bold',
     color: '#000000',
-    fontFamily:'DeliusSwashCaps'
+    //fontFamily:'DeliusSwashCaps'
   },
   detailText: {
     fontSize: 16,
     color: '#000000',
     marginBottom: 5,
-    fontFamily:'DeliusSwashCaps'
+    //fontFamily:'DeliusSwashCaps'
   },
   input: {
     borderBottomWidth: 1,
@@ -450,7 +451,7 @@ const styles = StyleSheet.create({
     color: '#000000',
     fontSize: 16,
     //fontWeight: 'bold',
-    fontFamily:'DeliusSwashCaps'
+    //fontFamily:'DeliusSwashCaps'
   },
   petBox: {
     padding: 15,
@@ -483,7 +484,7 @@ const styles = StyleSheet.create({
   hoitajaText:{
     fontSize:20,
     marginLeft:15,
-    fontFamily:'DeliusSwashCaps',
+    //fontFamily:'DeliusSwashCaps',
     color:'#000000'
   }
 });

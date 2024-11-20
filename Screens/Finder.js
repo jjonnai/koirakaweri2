@@ -49,7 +49,6 @@ export default function FinderScreen({navigation}) {
         <View style={styles.placeholderImage} />
       )}
       <Text style={styles.hoitajaName}>{item.name || "Nimetön käyttäjä"}</Text>
-      <Text style={styles.hoitajaInfo}>{item.info || "Ei esittelyä"}</Text>
     </TouchableOpacity>
   );
 

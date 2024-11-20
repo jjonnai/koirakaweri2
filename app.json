@@ -1,5 +1,6 @@
 {
   "expo": {
+    "newArchEnabled": false,
     "name": "koirakaweri2",
     "slug": "koirakaweri2",
     "version": "1.0.0",

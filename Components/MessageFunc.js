@@ -1,7 +1,7 @@
 import { getDatabase, ref, push, set, onValue } from 'firebase/database';
 import { getAuth } from 'firebase/auth';
 
-// Viestin lähetysfunktio
+
 export const sendMessage = async (receiverEmail, messageText) => {
   const db = getDatabase();
   const auth = getAuth();
@@ -12,11 +12,9 @@ export const sendMessage = async (receiverEmail, messageText) => {
     return;
   }
 
-  // Määritä sähköpostit Firebase-yhteensopiviksi
   const senderEmail = sender.email.replace(/\./g, '_');
   const receiverEmailKey = receiverEmail.replace(/\./g, '_');
 
-  // Luo viesti
   const messageData = {
     from: senderEmail,
     to: receiverEmailKey,
@@ -24,7 +22,6 @@ export const sendMessage = async (receiverEmail, messageText) => {
     timestamp: Date.now(),
   };
 
-  // Lisää viesti vastaanottajan polun alle
   const messageRef = ref(db, `messages/${receiverEmailKey}`);
   const newMessageRef = push(messageRef);
 
@@ -37,7 +34,6 @@ export const sendMessage = async (receiverEmail, messageText) => {
   }
 };
 
-// Viestien haku funktio
 export const fetchMessages = (setMessages) => {
   const db = getDatabase();
   const auth = getAuth();
@@ -60,7 +56,7 @@ export const fetchMessages = (setMessages) => {
         ...data[key],
       }));
 
-      // Ryhmittele viestit lähettäjän mukaan
+
       const groupedMessages = messagesArray.reduce((groups, message) => {
         const { from } = message;
         if (!groups[from]) {
