@@ -2,10 +2,12 @@ import { getDatabase, ref, push, set, onValue } from 'firebase/database';
 import { getAuth } from 'firebase/auth';
 
 
+
 export const sendMessage = async (receiverEmail, messageText) => {
   const db = getDatabase();
   const auth = getAuth();
   const sender = auth.currentUser;
+ 
 
   if (!sender) {
     alert('Kirjaudu sisään lähettääksesi viestin.');
@@ -22,17 +24,19 @@ export const sendMessage = async (receiverEmail, messageText) => {
     timestamp: Date.now(),
   };
 
-  const messageRef = ref(db, `messages/${receiverEmailKey}`);
-  const newMessageRef = push(messageRef);
+  const senderMessagesRef = ref(db, `messages/${senderEmail}`);
+  const receiverMessagesRef = ref(db, `messages/${receiverEmailKey}`);
 
   try {
-    await set(newMessageRef, messageData);
-    //alert('Viestisi on lähetetty!');
+    await set(push(senderMessagesRef), messageData);
+    await set(push(receiverMessagesRef), messageData);
   } catch (error) {
     console.error('Viestin lähetys epäonnistui:', error);
     alert('Viestin lähetys epäonnistui.');
   }
 };
+
+
 
 export const fetchMessages = (setMessages) => {
   const db = getDatabase();
@@ -47,7 +51,6 @@ export const fetchMessages = (setMessages) => {
   const userEmailKey = user.email.replace(/\./g, '_');
   const messagesRef = ref(db, `messages/${userEmailKey}`);
 
-
   onValue(messagesRef, (snapshot) => {
     if (snapshot.exists()) {
       const data = snapshot.val();
@@ -55,7 +58,6 @@ export const fetchMessages = (setMessages) => {
         id: key,
         ...data[key],
       }));
-
 
       const groupedMessages = messagesArray.reduce((groups, message) => {
         const { from } = message;

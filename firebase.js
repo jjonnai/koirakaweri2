@@ -7,13 +7,12 @@ import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 
 
 
-
 const app = initializeApp(firebaseConfig);
 const firestore = getFirestore(app);
 const database = getDatabase(app);
 const auth = getAuth(app);
 
-const MESSAGES = 'messages';
+//const MESSAGES = 'messages';
 
   export {
     app,
@@ -30,7 +29,7 @@ const MESSAGES = 'messages';
     signInWithEmailAndPassword,
     onValue,
     addDoc,
-    MESSAGES,
+    //MESSAGES,
     collection,
     doc,
     setDoc,

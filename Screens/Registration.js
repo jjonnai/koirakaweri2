@@ -5,10 +5,12 @@ import { ref, set } from 'firebase/database';
 import { database } from '../firebase';
 
 export default function RegistrationScreen({ navigation }) {
-  const imageUrl = 'https://firebasestorage.googleapis.com/v0/b/koirakaweri.appspot.com/o/KOIRAKAWERI12.jpg?alt=media&token=f5c11c93-f7f8-4faf-9b63-8f57a927a835';
+  const imageUrl = 'https://firebasestorage.googleapis.com/v0/b/koirakaweri.appspot.com/o/punainenlogo.jpg?alt=media&token=e6a7f0ef-4eef-42d8-abc1-6ed189aefd3a';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
+
+  //Rekisteröitymisen funktio
   const handleRegister = () => {
     const auth = getAuth();
     createUserWithEmailAndPassword(auth, email, password)
@@ -18,20 +20,21 @@ export default function RegistrationScreen({ navigation }) {
 
         await signInWithEmailAndPassword(auth, email, password);  
 
-
         const userEmail = user.email.replace(/\./g, '_'); 
         const userRef = ref(database, `users/${userEmail}`);
+        //Lisätään valmiiksi tyhjät tietueet tietokantaan
         await set(userRef, {
           name: '',
+          city:'',
           info: '',
           profileImage: '',
           pets: {} 
         });
-
+        //Navigoidaan kotisivulle
         navigation.replace('MainTabs');
       })
       .catch(error => {
-        Alert.alert("Virhe", error.message);
+        Alert.alert("Virhe rekisteröinnissä", error.message);
       });
   };
 
@@ -42,8 +45,6 @@ export default function RegistrationScreen({ navigation }) {
     <View style={styles.overlay}>
     <Text style={styles.title}>Rekisteröidy</Text>
     <View style={styles.inputContainer}>
-      
-      
       <TextInput
         style={styles.input}
         placeholder="Sähköposti"
@@ -52,7 +53,6 @@ export default function RegistrationScreen({ navigation }) {
         keyboardType="email-address"
         autoCapitalize="none"
       />
-
       <TextInput
         style={styles.input}
         placeholder="Salasana"
@@ -60,15 +60,12 @@ export default function RegistrationScreen({ navigation }) {
         onChangeText={setPassword}
         secureTextEntry
         autoCapitalize="none"
-      />
-
-      
+      /> 
     </View>
    <TouchableOpacity onPress={handleRegister} style={styles.button}>
-      <Text style={styles.buttonText}>Rekisteröidy</Text>
+    <Text style={styles.buttonText}>Rekisteröidy</Text>
     </TouchableOpacity>
     </View>
-    
     </ImageBackground>
     </KeyboardAvoidingView>
   );
@@ -80,7 +77,7 @@ const styles = StyleSheet.create({
   },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', 
+    backgroundColor: 'rgba(0, 0, 0, 0.1)', 
     alignItems: 'center',
     justifyContent: 'flex-end',
     padding: 20,
@@ -120,8 +117,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     paddingVertical: 15,
     borderRadius: 25,
-    backgroundColor: '#2196F3',
-    marginBottom:50,
+    backgroundColor: '#ff3300',
+    marginBottom:80,
   },
   buttonText: {
     color: 'white',

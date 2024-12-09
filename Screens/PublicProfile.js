@@ -1,9 +1,12 @@
-import { StyleSheet, Text, View, ScrollView, Image, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, Image, TouchableOpacity, TextInput, Button, Modal, Alert } from 'react-native';
 import React, { useState, useEffect } from 'react';
-import { database, ref, get, push, set } from '../firebase';
+import { database, ref, get, set } from '../firebase';
 import { getAuth } from 'firebase/auth';
 import { Feather } from '@expo/vector-icons';
 import { Rating } from 'react-native-ratings';
+import { sendMessage } from '../Components/MessageFunc';
+import AntDesign from '@expo/vector-icons/AntDesign';
+
 
 export default function PublicProfile({ route }) {
 
@@ -15,14 +18,18 @@ export default function PublicProfile({ route }) {
   
   const [ratingCount, setRatingCount] = useState(0);
   const [averageRating, setAverageRating] = useState(0);
-/*  const [ratingInfo, setRatingInfo] = useState(false);
-  const [RatingData, setRatingData] = useState([]);
-  const [newRatingData, setNewRatingData] = useState({
-    email: '',
-    
-  });*/
+  const [ratingUpdated, setRatingUpdated] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [ratingSaved, setRatingSaved] = useState(false);
+
+  const [showMessageForm, setShowMessageForm] = useState(false);
+  const [newMessage, setNewMessage] = useState('');
+  //const [messages, setMessages] = useState({});
+
+  const [modalVisible, setModalVisible] = useState(false);
   const auth = getAuth();
 
+  //Haetaan navigoinnin kautta välitetyllä item.id:llä käyttäjän profiili
   useEffect(() => {
     if (!userData) {
       console.error("Virhe: käyttäjän sähköposti puuttuu.");
@@ -65,7 +72,7 @@ export default function PublicProfile({ route }) {
     }
   };
 
-
+//Haetaan käyttäjän lemmikkien tiedot
   const fetchPetData = async (email) => {
     const userEmailFormatted = email.replace(/\./g, '_');  
     const petsRef = ref(database, `users/${userEmailFormatted}/pets`);
@@ -88,61 +95,51 @@ export default function PublicProfile({ route }) {
 
   //ARVOSTELU
   useEffect(() => {
-    console.log("userData ennen tarkistusta:", userData);
     if (!userData) {
       console.error("Virhe: käyttäjän sähköposti puuttuu.");
-      return; 
+      return;
     }
-    
-    console.log("suoritetaan useEffect");
-
-    const fetchRatingData = async (email) => {
-      console.log(email)
-    const ratedUserEmailFormatted = userData.replace(/\./g, '_');
-    const ratingsRef = ref(database, `users/${ratedUserEmailFormatted}/ratings`)
-    console.log("RatingsRef:", ratingsRef);
-    
-    
-    try {
-      console.log("Ennen get-kutsua");
-      const snapshot = await get(ratingsRef);
-      if (snapshot.exists()) {
-        console.log("Tietoja löytyi:", snapshot.val());
-        console.log("Haettu RatingData:", RatingData);
-        const RatingData = snapshot.val()
-        const ratingEntries = Object.values(RatingData);
-        console.log(RatingData)
-
-        const count = ratingEntries.length;
-        setRatingCount(count)
-
-        const totalRating = ratingEntries.reduce((sum, ratingData) => sum + ratingData.rating, 0);
-        const average = totalRating / count;
-        setAverageRating(average);
-        console.log(average)
-      }else {
+  
+    //console.log("Käynnistetään keskiarvon ja arvostelujen määrän haku käyttäjälle:", userData);
+  
+    const fetchRatingSummary = async () => {
+      const ratedUserEmailFormatted = userData.replace(/\./g, '_');
+      const ratingsSummaryRef = ref(database, `users/${ratedUserEmailFormatted}/ratingsSummary`);
+  
+      try {
+        const snapshot = await get(ratingsSummaryRef);
+  
+        if (snapshot.exists()) {
+          const summaryData = snapshot.val();
+          const average = summaryData.average || 0;
+          const count = summaryData.count || 0;
+  
+          setRatingCount(count);
+          setAverageRating(average);
+  
+          console.log(`Haetut arvot: keskiarvo = ${average}, määrä = ${count}`);
+        } else {
+          console.log("Tietoja ei löytynyt.");
+          setRatingCount(0);
+          setAverageRating(0);
+        }
+      } catch (error) {
+        console.error("Virhe yhteenvetotietojen haussa:", error);
         setRatingCount(0);
         setAverageRating(0);
-        console.log("ei toimi oikein")
-        console.log("Tietoja ei löytynyt.");
       }
-    } catch(error) {
-      console.error('Virhe arvostelujen haussa', error)
-      setRatingCount(0);
-      setAverageRating(0);
-    }
-    
-    }
-    fetchRatingData();
-   
+    };
+  
+    fetchRatingSummary();
 
-  }, [userData])
+    setRatingUpdated(false);
+  
+  }, [userData, ratingUpdated]);  
+ 
 
-
+//Haetaan ja lasketaan arvostelujen keskiarvo ja lisätään se tietokantaan, 
   const handleRating = async (rating) => {
     try {
-      console.log('Tallennettava rating:', rating);
-  
       const user = auth.currentUser;
       if (!user) {
         alert('Käyttäjä ei ole kirjautunut sisään.');
@@ -152,31 +149,86 @@ export default function PublicProfile({ route }) {
       const ratedUserEmailFormatted = userData.replace(/\./g, '_');
       const raterUserEmailFormatted = user.email.replace(/\./g, '_');
       const ratingRef = ref(database, `users/${ratedUserEmailFormatted}/ratings/${raterUserEmailFormatted}`);
-      //const newRatingRef = push(ratingsRef);
 
-      await set(ratingRef, {
-        rating: rating, 
-      });
+      await set(ratingRef, { rating });
   
-      console.log('Rating tallennettu onnistuneesti');
-      alert('Arvostelu tallennettu onnistuneesti!');
+      const ratingsRef = ref(database, `users/${ratedUserEmailFormatted}/ratings`);
+      const snapshot = await get(ratingsRef);
+  
+      if (snapshot.exists()) {
+        const ratings = snapshot.val();
+        const ratingEntries = Object.values(ratings);
+
+        const currentCount = ratingEntries.length;
+        const totalRating = ratingEntries.reduce((sum, ratingData) => sum + ratingData.rating, 0);
+ 
+        const newAverage = totalRating / currentCount;
+
+        const summaryRef = ref(database, `users/${ratedUserEmailFormatted}/ratingsSummary`);
+        await set(summaryRef, {
+          average: newAverage,  
+          count: currentCount,  
+        });
+  
+        //console.log('Keskiarvo ja määrä päivitetty tietokantaan.');
+ 
+        setRatingUpdated(true);
+  
+      }
     } catch (error) {
       console.error('Virhe tallennettaessa ratingia:', error);
       alert('Arvostelun tallennus epäonnistui.');
     }
   };
-
-
+  
  
 
+  const toggleMessageForm = () => {
+    setShowMessageForm((prev) => !prev); 
+  };
 
+  //Lähettää käyttäjälle viestin
+  const handleSendMessageFromProfile = async () => {
+    if (!userData) {
+      console.error('Vastaanottajan sähköposti puuttuu.');
+      alert('Vastaanottajan sähköposti puuttuu.');
+      return;
+    }
+  
+    const formattedEmail = userData.replace(/\./g, '_'); 
+    try {
+      await sendMessage(formattedEmail, newMessage);
+      console.log("Viesti lähetetty");
+      setNewMessage('');
+      setShowMessageForm(false);
+      Alert.alert("Viesti lähetetty!");
+    } catch (error) {
+      console.error('Viestin lähetys epäonnistui:', error);
+      alert('Viestin lähetys epäonnistui.');
+    }
+  };
+
+
+  const handleSaveRating = async () => {
+    if (rating > 0) {
+      await handleRating(rating); // Käyttää jo olemassa olevaa handleRating-funktiota
+      setRatingSaved(true);
+    } else {
+      alert('Valitse ensin arvostelu ennen tallentamista.');
+    }
+  };
+
+  const handleRatingSelection = (newRating) => {
+    setRating(newRating);
+    setRatingSaved(false); // Nollaa tallennustilan, jos käyttäjä vaihtaa arvostelua
+  };
 
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>{auth.currentUser?.email}</Text>
-      <Text style={styles.title}>{userData}</Text>
-      
+      <View style={styles.profileNameContainer}>
+      <Text style={styles.profileName}>{userData}</Text>
+      </View>
       {/* Profiilikuva */}
       <View style={styles.profileImageContainer}>
         {userDataState?.profileImage ? (
@@ -190,6 +242,7 @@ export default function PublicProfile({ route }) {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Käyttäjän tiedot</Text>
         <Text style={styles.detailText}>Nimi: {userDataState?.name || "Tietoa ei saatavilla"}</Text>
+        <Text style={styles.detailText}>Paikkakunta: {userDataState?.city || "Tietoa ei saatavilla"}</Text>
         <Text style={styles.detailText}>Esittely: {userDataState?.info || "Tietoa ei saatavilla"}</Text>
       </View>
 
@@ -215,22 +268,50 @@ export default function PublicProfile({ route }) {
           {isHoitaja ? 'Ilmoittautunut hoitajaksi' : 'Ei ole ilmoittautunut hoitajaksi'}
         </Text>
       </View>
-      <View style={styles.section}>
+      <View style={styles.section2}>
         <View style={styles.headerContainerRating}>
-          <Text style={styles.sectionTitle}>Arvostelut</Text>
-          <Text>Arvosteluja: {ratingCount}</Text>
-          <Rating
-           type='star'
-           ratingCount={5}
-           startingValue={averageRating}
-           imageSize={40}
-           showRating
-           onFinishRating={handleRating}
-/>
-<Text>Kerkiarvo: {averageRating}</Text>
+        <Text style={styles.sectionTitle}>Arvostelut</Text>
+    <Text>Arvosteluja: {ratingCount}</Text>
+    <Text>Keskimääräinen arvosana: {averageRating}</Text>
+    <View style={styles.ratingView}>
+      <Rating
+        type='star'
+        ratingCount={5}
+        startingValue={averageRating}
+        imageSize={40}
+        showRating
+        onFinishRating={handleRatingSelection}
+        jumpValue={1}
+        tintColor='#ffffff'
+        ratingTextColor='black'
+      />
+    </View>
+    <TouchableOpacity onPress={handleSaveRating} style={styles.actionButton}>
+      <Text style={styles.actionButtonText}>
+        {ratingSaved ? 'Arvostelu tallennettu' : 'Tallenna arvostelu'}
+      </Text>
+    </TouchableOpacity>
         </View>
         </View>
-  
+        <View style={styles.newMail}>
+      <TouchableOpacity  onPress={toggleMessageForm} style={styles.actionButton}>
+      <Text style={styles.actionButtonText}>Viesti hoitajalle</Text>
+      </TouchableOpacity>
+      </View>
+      {showMessageForm && (
+        <View style={styles.inputContainer}>
+
+          <TextInput
+            style={styles.input}
+            placeholder="Kirjoita viesti"
+            value={newMessage}
+            onChangeText={setNewMessage}
+          />
+          <TouchableOpacity onPress={handleSendMessageFromProfile} style={styles.actionButton} >
+        <Text style={styles.actionButtonText}>Lähetä viesti</Text>
+        </TouchableOpacity>
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -239,54 +320,65 @@ export default function PublicProfile({ route }) {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 20,
-    backgroundColor: '#f9f9f9',
+    padding: 24,
+    backgroundColor: '#f2f2f2',
   },
   profileImageContainer: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
+    marginTop:8,
+    padding:8,
   },
   profileImage: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    marginBottom: 10,
+    width: 200,
+    height: 200,
+    borderRadius: 15,
+    marginBottom: 8,
     borderWidth: 2,
     borderColor: '#ccc',
+    marginTop:8,
+    backgroundColor:'#99ccff'
   },
   section: {
-    marginBottom: 20,
-    padding: 15,
-    backgroundColor: '#fff',
+    marginBottom: 24,
+    padding: 16,
+    backgroundColor: '#ffffff',
     borderRadius: 10,
-    shadowColor: '#000',
+    shadowColor: 'rgba(95, 158, 160, 0.6)',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  section2: {
+    marginBottom: 16,
+    padding: 16,
+    backgroundColor: '#ffffff',
+    borderRadius: 10,
+    shadowColor: '#ffffff',
     shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
     elevation: 2,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: 'black',
   },
   detailText: {
     fontSize: 16,
-    color: '#555',
-    marginBottom: 5,
+    color: 'black',
+    marginBottom: 8,
   },
   petBox: {
-    padding: 15,
-    marginVertical: 10,
+    padding: 16,
+    marginVertical: 8,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    backgroundColor: '#f9f9f9',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 5,
-    elevation: 3,
+    borderWidth: 0.3,
+    //borderColor: 'rgba(95, 158, 160, 0.8)',
+    backgroundColor: '#ffffff',
+ 
   },
   hoitaja: {
     flexDirection: 'row-reverse',
@@ -294,11 +386,43 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   hoitajaText: {
-    fontSize: 20,
-    marginLeft: 15,
-    marginBottom:15,
+    fontSize: 16,
+    marginLeft: 16,
+    marginBottom:16,
+    fontWeight:'bold'
   },
-  headerContainerRating:{
-  
+  actionButton: {
+    marginVertical: 8,
+    paddingHorizontal: 16,
+    padding:8,
+    backgroundColor: '#ff3300',
+    borderRadius: 16,
+    alignItems: 'center',
   },
+  actionButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign:'center',
+    color:'#ffffff'
+  },
+  inputContainer: {
+    marginBottom: 24,
+  },
+  input: {
+    borderWidth: 2,
+    padding: 8,
+    marginVertical: 8,
+    borderRadius: 8,
+  },
+  profileName:{
+    textAlign:'center',
+    fontWeight:'bold',
+    fontSize:24,
+    padding:8,
+  },
+  profileNameContainer:{
+    padding:8,
+    width:'100%'
+  }
+
 });

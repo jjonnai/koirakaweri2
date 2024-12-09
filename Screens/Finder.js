@@ -3,44 +3,55 @@ import { View, Text, FlatList, StyleSheet, Image, TouchableOpacity } from 'react
 import { ref, get } from 'firebase/database';
 import { database } from '../firebase';
 import { useNavigation } from '@react-navigation/native';
+import { Rating } from 'react-native-ratings';
+
 
 export default function FinderScreen({navigation}) {
   const [hoitajat, setHoitajat] = useState([]);
+ 
 
+  //Haetaan tietokannasta kaikki käyttäjät, joilla isHoitaja arvo on true.
+  //Haetaan samalla myös tietokannasta arvostelujen keskiarvo
   useEffect(() => {
-    const fetchHoitajat = async () => {
+    const fetchHoitajatWithRatings = async () => {
       const usersRef = ref(database, 'users');
-
+  
       try {
         const snapshot = await get(usersRef);
         if (snapshot.exists()) {
           const data = snapshot.val();
-
+          console.log(data)
+  
           const hoitajaList = Object.entries(data)
-            .filter(([, userData]) => userData.isHoitaja === true)  
+            .filter(([, userData]) => userData.isHoitaja === true)
             .map(([id, userData]) => ({
-              id,           
-              ...userData,  
+              id, 
+              name: userData.name || "Nimetön käyttäjä",
+              profileImage: userData.profileImage || null,
+              averageRating: userData.ratingsSummary?.average || 0, 
+              ratingCount: userData.ratingsSummary?.count || 0,
             }));
-
+  
           setHoitajat(hoitajaList);
         } else {
           console.log("Ei löytynyt hoitajia.");
         }
       } catch (error) {
-        console.error("Virhe hoitajien haussa:", error);
+        console.error("Virhe hoitajien ja arvostelujen haussa:", error);
       }
     };
-
-    fetchHoitajat();
+  
+    fetchHoitajatWithRatings();
   }, []);
 
 
+  //Navigointi käyttäjän yleiseen profiiliin, välitetään item.id profiiliin
   const handlePress = (item) => {
     console.log("Navigoidaan käyttäjän kanssa:", item.id);  
     navigation.navigate('YleinenProfiili', { userData: item.id });  
   };
 
+  //Renderöidään hoitaja lista
   const renderItem = ({ item }) => (
     <TouchableOpacity style={styles.hoitajaItem} onPress={() => handlePress(item)}>
       {item.profileImage ? (
@@ -48,7 +59,18 @@ export default function FinderScreen({navigation}) {
       ) : (
         <View style={styles.placeholderImage} />
       )}
-      <Text style={styles.hoitajaName}>{item.name || "Nimetön käyttäjä"}</Text>
+      <Text style={styles.hoitajaName}>{item.name}</Text>
+      <View style={styles.ratingView}>
+      <Rating
+        type='star'
+        ratingCount={5}
+        startingValue={item.averageRating} 
+        imageSize={15}
+        readonly
+        tintColor='#ffffff'
+      />
+      <Text style={styles.ratingText}>Arvosteluja: {item.ratingCount}</Text>
+      </View>
     </TouchableOpacity>
   );
 
@@ -70,7 +92,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: '#fff'
+    backgroundColor:'#f2f2f2'
   },
   title: {
     fontSize: 24,
@@ -88,7 +110,7 @@ const styles = StyleSheet.create({
     marginVertical: 10,
     marginHorizontal:10,
     alignItems: 'center',
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#ffffff',
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#ddd',
@@ -110,11 +132,13 @@ const styles = StyleSheet.create({
   hoitajaName: {
     fontSize: 16,
     fontWeight: 'bold',
-    textAlign: 'center'
+    textAlign: 'center',
+    marginBottom:10,
   },
-  hoitajaInfo: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center'
+  ratingText:{
+    fontSize:12
   }
+
+
+
 });

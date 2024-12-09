@@ -4,15 +4,18 @@ import { useNavigation } from '@react-navigation/core';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { firebase } from '../firebase';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'react-native';
 
 const LoginScreen = ({ navigation }) => {
-  const imageUrl = 'https://firebasestorage.googleapis.com/v0/b/koirakaweri.appspot.com/o/KOIRAKAWERI12.jpg?alt=media&token=f5c11c93-f7f8-4faf-9b63-8f57a927a835';
+ const imageUrl = 'https://firebasestorage.googleapis.com/v0/b/koirakaweri.appspot.com/o/punainenlogo.jpg?alt=media&token=e6a7f0ef-4eef-42d8-abc1-6ed189aefd3a';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
   const auth = getAuth();
 
+
+  //Kirjautumisen funktio, error ilmoitus väärästä sähköpostista tai salasanasta
   const handleLogin = () => {
     if (email === '' || password === '') {
       setError('Tarkista kentät');
@@ -22,23 +25,19 @@ const LoginScreen = ({ navigation }) => {
           navigation.replace('MainTabs');
         })
         .catch((error) => {
-          if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-login-credentials') {
             setError('Väärä sähköposti tai salasana');
-          } else if (error.code === 'auth/invalid-email') {
-            setError('Väärä sähköposti');
-          } else {
-            setError('Kirjautumisessa tapahtui virhe');
-          }
-          console.error(error);
-        });
-    }
+            console.error(error);
+    });
+  }
   };
 
   return (
    
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    
       <ImageBackground source={{ uri: imageUrl }} style={styles.background}>
         <View style={styles.overlay}>
+        
           <View style={styles.inputContainer}>
             <TextInput
               placeholder='Sähköposti'
@@ -66,6 +65,7 @@ const LoginScreen = ({ navigation }) => {
         </View>
       </ImageBackground>
     </KeyboardAvoidingView> 
+    
   );
 };
 
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
   },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', 
+    backgroundColor: 'rgba(0, 0, 0, 0.1)', 
     alignItems: 'center',
     justifyContent: 'flex-end',
     padding: 20,
@@ -108,10 +108,10 @@ const styles = StyleSheet.create({
   },
   button: {
     marginTop: 20,
-    paddingHorizontal: 40,
+    paddingHorizontal: 60,
     paddingVertical: 15,
     borderRadius: 25,
-    backgroundColor: '#2196F3',
+    backgroundColor: '#ff3300',
   },
   buttonText: {
     color: 'white',
@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
     color: 'white',
     marginBottom:40,
     marginTop: 30,
-    fontSize:16
+    fontSize:20
   },
   errorText: {
     color: 'red',

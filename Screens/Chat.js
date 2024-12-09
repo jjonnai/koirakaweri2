@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, Button, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TextInput, ScrollView, StyleSheet} from 'react-native';
+import { Button } from '@rneui/base';
 import { sendMessage, fetchMessages } from '../Components/MessageFunc';
 import { getAuth } from 'firebase/auth';
 import { useRoute } from '@react-navigation/native';
@@ -8,6 +9,7 @@ import { getDatabase, ref, onValue } from 'firebase/database';
 export default function Chat() {
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
+    //const [newMessages, setNewMessages] = useState(false);
     const route = useRoute();
     const { contactEmail } = route.params;
     const auth = getAuth();
@@ -17,7 +19,9 @@ export default function Chat() {
     
   
     const scrollViewRef = useRef();
-  
+    
+    
+
 
     useEffect(() => {
       const messagesRef = ref(db, `messages`);
@@ -34,15 +38,19 @@ export default function Chat() {
               (msg.from === userEmail && msg.to === contactEmailKey) ||
               (msg.from === contactEmailKey && msg.to === userEmail)
           );
+    
   
-          const sortedMessages = contactMessages.sort((a, b) => a.timestamp - b.timestamp);
-          setMessages(sortedMessages);
+         const sortedMessages = contactMessages.sort((a, b) => a.timestamp - b.timestamp);
+          
+          setMessages(sortedMessages); 
+          scrollViewRef.current.scrollToEnd({ animated: true });  
         } else {
-          setMessages([]);
+          setMessages([]);  
         }
       });
-  
+      
       return () => unsubscribe();
+      
     }, [contactEmailKey, userEmail]);
   
     const handleSendMessage = async () => {
@@ -52,7 +60,7 @@ export default function Chat() {
         await sendMessage(contactEmail, newMessage);
         setNewMessage('');
         
-        scrollViewRef.current.scrollToEnd({ animated: true });
+       
       } catch (error) {
         console.error('Viestin lähetys epäonnistui:', error);
       }
@@ -88,9 +96,16 @@ export default function Chat() {
             onChangeText={setNewMessage}
           />
           <Button
-            title="Lähetä"
-            onPress={handleSendMessage}
+          title='Lähetä'
+          onPress={handleSendMessage}
+          buttonStyle={{ backgroundColor: '#ff3300',
+            borderRadius:16,
+            paddingHorizontal:14
+           }} 
+          titleStyle={{ color: '#ffffff' }}
           />
+          
+            
         </View>
       </View>
     );
@@ -100,6 +115,7 @@ export default function Chat() {
     container: {
       flex: 1,
       padding: 10,
+      backgroundColor:'#f2f2f2'
     },
     messageList: {
       flex: 1,
@@ -113,10 +129,13 @@ export default function Chat() {
     sentMessage: {
       backgroundColor: '#dcf8c6',
       alignSelf: 'flex-end',
+      marginLeft:70,
+      
     },
     receivedMessage: {
-      backgroundColor: '#dcf8c6',
+      backgroundColor: '#cccccc',
       alignSelf: 'flex-start',
+      marginRight:70
     },
     messageText: {
       fontSize: 16,
@@ -136,4 +155,7 @@ export default function Chat() {
       borderRadius: 5,
       marginRight: 10,
     },
+    button: {
+
+    }
   });
