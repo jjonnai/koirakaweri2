@@ -3,10 +3,8 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { getAuth, onAuthStateChanged } from 'firebase/auth';
-import { StyleSheet  } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { LogBox } from 'react-native';
-import { BlurView } from 'expo-blur';
 
 import LoginScreen from './Screens/LoginScreen';
 import Home from './Screens/Home';
@@ -191,7 +189,7 @@ export default function App() {
           options={{ headerShown: false }} 
         />
         <Stack.Screen
-          name="Viestit"
+          name="Chat"
           component={Chat}
           options={{ headerShown: true,
             headerStyle: {

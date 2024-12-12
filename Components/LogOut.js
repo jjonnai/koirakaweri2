@@ -10,7 +10,7 @@ const LogOutButton = ({ onPress }) => {
     const signOutHandler = () => {
         auth.signOut()
             .then(() => {
-              //  Alert.alert("Logged out successfully.");
+              
                 navigation.replace('Login'); 
             })
             .catch((error) => {

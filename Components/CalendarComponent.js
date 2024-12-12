@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Alert, Text, ScrollView } from 'react-native';
+import { View, StyleSheet, Text } from 'react-native';
 import { Calendar } from 'react-native-calendars';
-import { ref, set, onValue } from 'firebase/database';
-import { Tooltip } from '@rneui/base';
-import { getAuth } from 'firebase/auth';
+import { ref, onValue } from 'firebase/database';
 import { Dialog, Portal, useTheme, Provider } from 'react-native-paper';
-import { Button, Card } from '@rneui/themed';
+import { Button } from '@rneui/themed';
 
 const CalendarComponent = ({ userEmail, database }) => {
   const [selectedDate, setSelectedDate] = useState(null);  
@@ -13,8 +11,9 @@ const CalendarComponent = ({ userEmail, database }) => {
   const [reservationDetails, setReservationDetails] = useState(null);  
   const [visible, setVisible] = useState(false);  
   const theme = useTheme(); 
-  const currentDate = new Date().toISOString().split('T')[0];
 
+
+  //Haetaan ilmoitukset ja kerrotaan miten ne näytetään kalenterissa
   useEffect(() => {
 
     const sanitizedEmail = userEmail.replace(/\./g, '_');
@@ -23,7 +22,7 @@ const CalendarComponent = ({ userEmail, database }) => {
     onValue(reservationRef, (snapshot) => {
       if (snapshot.exists()) {
         const fetchedReservations = snapshot.val();
-
+        //Miten päivät merkitään
         const formattedReservations = Object.keys(fetchedReservations).reduce((acc, date) => {
           return {
             ...acc,
@@ -32,7 +31,6 @@ const CalendarComponent = ({ userEmail, database }) => {
               endingDay: true,
               color: 'red',  
               textColor: 'white',
-              minDate:{currentDate}
             },
           };
         }, {});
@@ -44,11 +42,14 @@ const CalendarComponent = ({ userEmail, database }) => {
     });
   }, [database, userEmail]);
 
+
+  //Funktio, jolla määritellään mitä päivää painamalla tapahtuu
   const handleDayPress = (day) => {
     setSelectedDate(day.dateString);
     fetchReservationDetails(day.dateString);
   };
 
+  //Varauksien tietojen haku
   const fetchReservationDetails = (date) => {
     const sanitizedEmail = userEmail.replace(/\./g, '_');
     const usersRef = ref(database, 'users');
@@ -101,6 +102,8 @@ const CalendarComponent = ({ userEmail, database }) => {
         markedDates={reservations}
         onDayPress={handleDayPress}
         markingType="period"
+        firstDay={1}
+        
       />
            </View>
     <Portal>
@@ -113,7 +116,19 @@ const CalendarComponent = ({ userEmail, database }) => {
                   <View key={index} style={{ marginBottom: 10 }}>
                     <Text style={{ fontWeight: 'bold' }}>Palvelu: {notification.service || 'Ei tietoa'}</Text>
                     <Text>Omistaja: {notification.userEmail}</Text>
-                    <Text>Lemmikkien nimet: {notification.petNames? notification.petNames.join(', ') : 'Nimet puuttuvat'}</Text>
+                    <Text style={{ fontWeight: 'bold' }}>Hoidettavat lemmikit:</Text>
+                       {notification.petDetails && notification.petDetails.length > 0 ? (
+                        notification.petDetails.map((pet, index) => (
+                        <View key={index}>
+                       <Text>Lemmikin nimi: {pet.name}</Text>
+                        <Text>Sukupuoli: {pet.gender}</Text>
+                        <Text>Rotu: {pet.race}</Text>
+                      </View>
+                      ))
+                    ) : (
+                      <Text>Ei valittuja lemmikkejä</Text>
+                    )}
+
                     <Text>Lisätiedot:</Text>
                     <Text>- Tulee toimeen muiden kanssa: {notification.additionalInfo.getsAlong ? 'Kyllä' : 'Ei'}</Text>
                     <Text>- Saa olla muita lemmikkejä: {notification.additionalInfo.allowsOtherPets ? 'Kyllä' : 'Ei'}</Text>

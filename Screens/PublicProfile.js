@@ -1,11 +1,11 @@
-import { StyleSheet, Text, View, ScrollView, Image, TouchableOpacity, TextInput, Button, Modal, Alert } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, Image, TouchableOpacity, TextInput, Alert } from 'react-native';
 import React, { useState, useEffect } from 'react';
-import { database, ref, get, set } from '../firebase';
+import { database, ref, get, set, onValue } from '../firebase';
 import { getAuth } from 'firebase/auth';
 import { Feather } from '@expo/vector-icons';
 import { Rating } from 'react-native-ratings';
 import { sendMessage } from '../Components/MessageFunc';
-import AntDesign from '@expo/vector-icons/AntDesign';
+
 
 
 export default function PublicProfile({ route }) {
@@ -142,7 +142,7 @@ export default function PublicProfile({ route }) {
     try {
       const user = auth.currentUser;
       if (!user) {
-        alert('Käyttäjä ei ole kirjautunut sisään.');
+        console.log('Käyttäjä ei ole kirjautunut sisään.');
         return;
       }
   
@@ -169,15 +169,12 @@ export default function PublicProfile({ route }) {
           average: newAverage,  
           count: currentCount,  
         });
-  
-        //console.log('Keskiarvo ja määrä päivitetty tietokantaan.');
  
         setRatingUpdated(true);
   
       }
     } catch (error) {
       console.error('Virhe tallennettaessa ratingia:', error);
-      alert('Arvostelun tallennus epäonnistui.');
     }
   };
   
@@ -191,27 +188,25 @@ export default function PublicProfile({ route }) {
   const handleSendMessageFromProfile = async () => {
     if (!userData) {
       console.error('Vastaanottajan sähköposti puuttuu.');
-      alert('Vastaanottajan sähköposti puuttuu.');
       return;
     }
   
     const formattedEmail = userData.replace(/\./g, '_'); 
     try {
       await sendMessage(formattedEmail, newMessage);
-      console.log("Viesti lähetetty");
+
       setNewMessage('');
       setShowMessageForm(false);
-      Alert.alert("Viesti lähetetty!");
+      console.log("Viesti lähetetty!");
     } catch (error) {
       console.error('Viestin lähetys epäonnistui:', error);
-      alert('Viestin lähetys epäonnistui.');
     }
   };
 
 
   const handleSaveRating = async () => {
     if (rating > 0) {
-      await handleRating(rating); // Käyttää jo olemassa olevaa handleRating-funktiota
+      await handleRating(rating); 
       setRatingSaved(true);
     } else {
       alert('Valitse ensin arvostelu ennen tallentamista.');
@@ -220,7 +215,7 @@ export default function PublicProfile({ route }) {
 
   const handleRatingSelection = (newRating) => {
     setRating(newRating);
-    setRatingSaved(false); // Nollaa tallennustilan, jos käyttäjä vaihtaa arvostelua
+    setRatingSaved(false); 
   };
 
 
@@ -243,7 +238,7 @@ export default function PublicProfile({ route }) {
         <Text style={styles.sectionTitle}>Käyttäjän tiedot</Text>
         <Text style={styles.detailText}>Nimi: {userDataState?.name || "Tietoa ei saatavilla"}</Text>
         <Text style={styles.detailText}>Paikkakunta: {userDataState?.city || "Tietoa ei saatavilla"}</Text>
-        <Text style={styles.detailText}>Esittely: {userDataState?.info || "Tietoa ei saatavilla"}</Text>
+        <Text style={styles.detailText}>{userDataState?.info || "Tietoa ei saatavilla"}</Text>
       </View>
 
       {/* Lemmikkien tiedot */}
@@ -252,17 +247,29 @@ export default function PublicProfile({ route }) {
         {petData.length > 0 ? (
           petData.map((pet) => (
             <View key={pet.id} style={styles.petBox}>
+              <View style={styles.petImageContainer}>
+              {pet.petImage ? (
+          <Image source={{ uri: pet.petImage }} style={styles.petImage} />
+        ) : (
+          <Feather name="image" size={150} color="black" /> 
+        )}
+        </View>
+        <View style={styles.section}>
               <Text style={styles.detailText}>Nimi: {pet.name || "Tietoa ei saatavilla"}</Text>
               <Text style={styles.detailText}>Ikä: {pet.age || "Tietoa ei saatavilla"}</Text>
               <Text style={styles.detailText}>Rotu: {pet.race || "Tietoa ei saatavilla"}</Text>
               <Text style={styles.detailText}>Sukupuoli: {pet.gender || "Tietoa ei saatavilla"}</Text>
-              <Text style={styles.detailText}>Esittely: {pet.info || "Tietoa ei saatavilla"}</Text>
+              <Text style={styles.detailText}>{pet.info || "Tietoa ei saatavilla"}</Text>
             </View>
+            </View>
+            
           ))
+          
         ) : (
           <Text>Lemmikkitietoja ei ole saatavilla</Text>
         )}
       </View>
+      
       <View style={styles.hoitaja}>
         <Text style={styles.hoitajaText}>
           {isHoitaja ? 'Ilmoittautunut hoitajaksi' : 'Ei ole ilmoittautunut hoitajaksi'}
@@ -272,7 +279,7 @@ export default function PublicProfile({ route }) {
         <View style={styles.headerContainerRating}>
         <Text style={styles.sectionTitle}>Arvostelut</Text>
     <Text>Arvosteluja: {ratingCount}</Text>
-    <Text>Keskimääräinen arvosana: {averageRating}</Text>
+    <Text>Keskimääräinen arvosana: {Math.round(averageRating)}</Text>
     <View style={styles.ratingView}>
       <Rating
         type='star'
@@ -282,7 +289,7 @@ export default function PublicProfile({ route }) {
         showRating
         onFinishRating={handleRatingSelection}
         jumpValue={1}
-        tintColor='#ffffff'
+      
         ratingTextColor='black'
       />
     </View>
@@ -378,6 +385,7 @@ const styles = StyleSheet.create({
     borderWidth: 0.3,
     //borderColor: 'rgba(95, 158, 160, 0.8)',
     backgroundColor: '#ffffff',
+    marginBottom:16
  
   },
   hoitaja: {
@@ -423,6 +431,18 @@ const styles = StyleSheet.create({
   profileNameContainer:{
     padding:8,
     width:'100%'
-  }
+  },
+  petImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 75,
+    marginBottom: 10,
+    borderWidth: 2,
+    borderColor: '#f2f2f2',
+    alignContent:'center'
+  },
+  petImageContainer: {
+    alignItems:'center'
+  },
 
 });

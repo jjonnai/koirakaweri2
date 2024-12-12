@@ -1,38 +1,57 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, Image, TouchableOpacity } from 'react-native';
-import { ref, get } from 'firebase/database';
+import { ref, get, auth } from 'firebase/database';
 import { database } from '../firebase';
-import { useNavigation } from '@react-navigation/native';
+import { getAuth } from 'firebase/auth';
 import { Rating } from 'react-native-ratings';
+
 
 
 export default function FinderScreen({navigation}) {
   const [hoitajat, setHoitajat] = useState([]);
  
 
-  //Haetaan tietokannasta kaikki käyttäjät, joilla isHoitaja arvo on true.
-  //Haetaan samalla myös tietokannasta arvostelujen keskiarvo
+  const auth = getAuth();
+  const userEmail = auth.currentUser.email.replace(/\./g, '_');
+ 
+ 
+
+
+  //Haetaan kaikki hoitajaksi ilmoittautuneet käyttäjät listaan ja suodatetaan oma 
+  //profiili tarvittaessa pois, haetaan samalla arvostelut
   useEffect(() => {
     const fetchHoitajatWithRatings = async () => {
-      const usersRef = ref(database, 'users');
+      
+        const user = auth.currentUser;
+        if (!user) {
+          console.log('Käyttäjä ei ole kirjautunut sisään.');
+          return;
+        }
+    
+        const userEmail = user.email.replace(/\./g, '_');
+        const usersRef = ref(database, 'users');
+        console.log(userEmail)
   
       try {
         const snapshot = await get(usersRef);
         if (snapshot.exists()) {
           const data = snapshot.val();
-          console.log(data)
   
           const hoitajaList = Object.entries(data)
-            .filter(([, userData]) => userData.isHoitaja === true)
+            .filter(([id, userData]) => {
+
+              return userData.isHoitaja === true && id !== userEmail;
+            })
             .map(([id, userData]) => ({
-              id, 
+              id,
               name: userData.name || "Nimetön käyttäjä",
               profileImage: userData.profileImage || null,
-              averageRating: userData.ratingsSummary?.average || 0, 
+              averageRating: userData.ratingsSummary?.average || 0,
               ratingCount: userData.ratingsSummary?.count || 0,
             }));
   
           setHoitajat(hoitajaList);
+          console.log(hoitajaList)
         } else {
           console.log("Ei löytynyt hoitajia.");
         }
@@ -108,7 +127,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 10,
     marginVertical: 10,
-    marginHorizontal:10,
+    marginHorizontal:5,
     alignItems: 'center',
     backgroundColor: '#ffffff',
     borderRadius: 10,
@@ -130,7 +149,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ccc',
   },
   hoitajaName: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom:10,

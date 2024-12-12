@@ -1,7 +1,10 @@
 import * as ImagePicker from "expo-image-picker";
 import { ref, update, get } from "firebase/database";
 
+
+//Kuvan valitseminen galleriasta
 export const pickProfileImage = async (setProfileImage, saveProfileImage) => {
+  //Pyydetään lupa käyttää galleriaa
   const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permissionResult.granted) {
     alert("Pääsy galleriaan on estetty.");
@@ -21,7 +24,7 @@ export const pickProfileImage = async (setProfileImage, saveProfileImage) => {
   }
 };
 
-
+//Sama lemmikin kuvan kanssa, jos lupa on myönnetty ei pyydetä toista kertaa
 export const pickPetImage = async (setPetImage) => {
   const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permissionResult.granted) {
@@ -41,6 +44,8 @@ export const pickPetImage = async (setPetImage) => {
   }
 };
 
+
+//Funktio kuvan ottamiseen puhelimen kameralla
 export const takePhoto = async (setProfileImage, saveProfileImage) => {
   const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
   if (!permissionResult.granted) {
@@ -60,16 +65,16 @@ export const takePhoto = async (setProfileImage, saveProfileImage) => {
   }
 };
 
+//Profiilikuvan tallentaminen tietokantaan
 export const saveProfileImage = async (uri, auth, database) => {
   const user = auth.currentUser;
   if (!user) {
-    alert("Käyttäjä ei ole kirjautunut sisään.");
+    console.log("Käyttäjä ei ole kirjautunut sisään.");
     return;
   }
 
   const userEmail = user.email.replace(/\./g, "_");
   const userRef = ref(database, `users/${userEmail}`);
-  console.log("Tallennettava URI:", uri);
 
   try {
     await update(userRef, { profileImage: uri });
@@ -79,10 +84,11 @@ export const saveProfileImage = async (uri, auth, database) => {
   }
 };
 
+//Profiilikuvan hakeminen tietokannasta
 export const fetchProfileImage = async (setProfileImage, auth, database) => {
   const user = auth.currentUser;
   if (!user) {
-    alert("Käyttäjä ei ole kirjautunut sisään.");
+    console.log("Käyttäjä ei ole kirjautunut sisään.");
     return;
   }
 
@@ -102,11 +108,11 @@ export const fetchProfileImage = async (setProfileImage, auth, database) => {
   }
 };
 
-
+//Lemmikkin kuvan tallentaminen tietokantaan
 export const savePetImage = async (uri, auth, database, petId) => {
   const user = auth.currentUser;
   if (!user) {
-    alert("Käyttäjä ei ole kirjautunut sisään.");
+    console.log("Käyttäjä ei ole kirjautunut sisään.");
     return;
   }
 
@@ -122,11 +128,11 @@ export const savePetImage = async (uri, auth, database, petId) => {
 };
 
 
-
+//Ja hakeminen
 export const fetchPetImage = async (setPetImage, auth, database, petId) => {
   const user = auth.currentUser;
   if (!user) {
-    alert("Käyttäjä ei ole kirjautunut sisään.");
+    console.log("Käyttäjä ei ole kirjautunut sisään.");
     return;
   }
 

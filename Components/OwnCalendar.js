@@ -3,7 +3,7 @@ import { View, StyleSheet, Text } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { Dialog, Portal, Text as PaperText, Provider, useTheme } from 'react-native-paper';
 import { ref, onValue } from 'firebase/database';
-import { Button, Card } from '@rneui/themed';
+import { Button } from '@rneui/themed';
 
 const OwnCalendar = ({ userEmail, database }) => {
   const [reservations, setReservations] = useState({}); 
@@ -11,7 +11,6 @@ const OwnCalendar = ({ userEmail, database }) => {
   const [visible, setVisible] = useState(false); 
   const [reservationDetails, setReservationDetails] = useState([]); 
   const theme = useTheme();
-  const currentDate = new Date().toISOString().split('T')[0];
 
   useEffect(() => {
 
@@ -98,7 +97,7 @@ const OwnCalendar = ({ userEmail, database }) => {
           markedDates={reservations}
           onDayPress={handleDayPress}
           markingType="period" 
-          minDate={currentDate}
+          firstDay={1}
           
         />
       </View>
@@ -112,8 +111,19 @@ const OwnCalendar = ({ userEmail, database }) => {
               reservationDetails.map((notification, index) => (
                 <View key={index} style={{ marginBottom: 10 }}>
                   <Text style={{ fontWeight: 'bold' }}>Palvelu: {notification.service || 'Ei tietoa'}</Text>
-                  <Text >Ilmoittautunut hoitaja: {notification.status?.acceptedBy}</Text>
-                  <Text>Lemmikkien nimet: {notification.petNames ? notification.petNames.join(', ') : 'Nimet puuttuvat'}</Text>
+                  <Text >Hoitaja: {notification.status?.acceptedBy.replace(/\_/g, '.')}</Text>
+                  <Text style={{ fontWeight: 'bold' }}>Hoidettavat lemmikit:</Text>
+    {notification.petDetails && notification.petDetails.length > 0 ? (
+      notification.petDetails.map((pet, index) => (
+        <View key={index}>
+          <Text>Lemmikin nimi: {pet.name}</Text>
+          <Text>Sukupuoli: {pet.gender}</Text>
+          <Text>Rotu: {pet.race}</Text>
+        </View>
+      ))
+    ) : (
+      <Text>Ei valittuja lemmikkejä</Text>
+    )}
                   <Text>Lisätiedot:</Text>
                   <Text>- Tulee toimeen muiden kanssa: {notification.additionalInfo.getsAlong ? 'Kyllä' : 'Ei'}</Text>
                   <Text>- Saa olla muita lemmikkejä: {notification.additionalInfo.allowsOtherPets ? 'Kyllä' : 'Ei'}</Text>

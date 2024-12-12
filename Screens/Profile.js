@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, Switch } from 'react-native';
 import { getAuth } from 'firebase/auth';
-import { Button, Card } from '@rneui/themed';
+import { Button} from '@rneui/themed';
 import { database, ref, set, update, get, push, remove } from '../firebase';
-import { useFonts } from 'expo-font';
 import Feather from '@expo/vector-icons/Feather';
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { pickProfileImage, pickPetImage, takePhoto, saveProfileImage, fetchProfileImage, fetchPetImage, savePetImage } from "../Components/ProfileFunctions";
 import CalendarComponent from '../Components/CalendarComponent'
-import { CommonActions } from '@react-navigation/native';
+
 
 export default function ProfileScreen({ navigation }) {
 
@@ -43,7 +41,7 @@ export default function ProfileScreen({ navigation }) {
     const fetchData = async () => {
       const user = auth.currentUser;
       if (!user) {
-        alert('Käyttäjä ei ole kirjautunut sisään.');
+        console.log('Käyttäjä ei ole kirjautunut sisään.');
         return;
       }
 
@@ -85,7 +83,7 @@ export default function ProfileScreen({ navigation }) {
   const handleUserData = async () => {
     const user = auth.currentUser;
     if (!user) {
-      alert('Käyttäjä ei ole kirjautunut sisään.');
+      console.log('Käyttäjä ei ole kirjautunut sisään.');
       return;
     }
 
@@ -94,10 +92,10 @@ export default function ProfileScreen({ navigation }) {
 
     try {
       await update(userRef, { name: userData.name, info: userData.info, city: userData.city, isHoitaja: isHoitaja, });
-      alert("Käyttäjätiedot tallennettu!");
+      console.log("Käyttäjätiedot tallennettu!");
     } catch (error) {
       console.error("Virhe käyttäjätietojen tallennuksessa:", error);
-      alert("Tietojen tallennus epäonnistui");
+      console.log("Tietojen tallennus epäonnistui");
     }
   };
 
@@ -105,7 +103,7 @@ export default function ProfileScreen({ navigation }) {
   const handleAddPet = async () => {
     const user = auth.currentUser;
     if (!user) {
-      alert('Käyttäjä ei ole kirjautunut sisään.');
+      console.log('Käyttäjä ei ole kirjautunut sisään.');
       return;
     }
   
@@ -123,10 +121,11 @@ export default function ProfileScreen({ navigation }) {
       };
   
       await update(newPetRef, petWithId);
-      alert('Lemmikkitiedot tallennettu!');
+      console.log('Lemmikkitiedot tallennettu!');
   
       setPetData([...petData, petWithId]);
   
+      setIsPetSaved(true);
 
       setNewPetData({
         name: '',
@@ -139,7 +138,7 @@ export default function ProfileScreen({ navigation }) {
       setPetImage(''); 
     } catch (error) {
       console.error('Virhe tallentaessa lemmikkitietoja:', error);
-      alert('Tietojen tallennus epäonnistui');
+      console.log('Tietojen tallennus epäonnistui');
     }
   
     setPetInfo(false);
@@ -148,22 +147,23 @@ export default function ProfileScreen({ navigation }) {
   //Lemmikki tietojen muokkaaminen
   const handleEditPet = async () => {
     if (!selectedPetId) {
-      alert('Valitse muokattava lemmikki.');
+      console.log('Valitse muokattava lemmikki.');
       return;
     }
   
     const user = auth.currentUser;
     if (!user) {
-      alert('Käyttäjä ei ole kirjautunut sisään.');
+      console.log('Käyttäjä ei ole kirjautunut sisään.');
       return;
     }
+    console.log("Lemmikin tieto: ${isPetSaved}")
   
     const userEmail = user.email.replace(/\./g, '_');
     const petRef = ref(database, `users/${userEmail}/pets/${selectedPetId}`);
   
     try {
       await update(petRef, { ...newPetData, petImage });
-      alert('Lemmikkitiedot päivitetty!');
+      console.log('Lemmikkitiedot päivitetty!');
   
       setPetData(petData.map(pet =>
         pet.id === selectedPetId ? { id: pet.id, ...newPetData, petImage } : pet
@@ -174,7 +174,6 @@ export default function ProfileScreen({ navigation }) {
       setSelectedPetId(null);
     } catch (error) {
       console.error("Virhe lemmikkitietojen päivittämisessä:", error);
-      alert('Tietojen päivitys epäonnistui');
     }
   
     setPetInfo(false);
@@ -184,7 +183,7 @@ export default function ProfileScreen({ navigation }) {
   const handleDeletePet = async (petId) => {
     const user = auth.currentUser;
     if (!user) {
-      alert('Käyttäjä ei ole kirjautunut sisään.');
+      console.log('Käyttäjä ei ole kirjautunut sisään.');
       return;
     }
 
@@ -197,7 +196,6 @@ export default function ProfileScreen({ navigation }) {
       setPetData(petData.filter(pet => pet.id !== petId));
     } catch (error) {
       console.error("Virhe lemmikin poistamisessa:", error);
-      alert('Poisto epäonnistui');
     }
   };
 
@@ -233,7 +231,6 @@ export default function ProfileScreen({ navigation }) {
         const userRef = ref(database, `users/${userEmail}`);
         update(userRef, { isHoitaja: newStatus }).catch((error) => {
           console.error("Virhe isHoitaja-arvon tallennuksessa:", error);
-          Alert("isHoitaja-arvon tallennus epäonnistui");
         });
       }
       return newStatus;
@@ -292,6 +289,10 @@ export default function ProfileScreen({ navigation }) {
               onChangeText={(text) => setUserData({ ...userData, city: text })}
             />
             <TextInput
+            multiline={true}
+            numberOfLines={6}
+            scrollEnabled={true}
+            //textAlignVertical="top'
               style={styles.input}
               placeholder="Esittelyteksti"
               value={userData.info}
@@ -308,7 +309,7 @@ export default function ProfileScreen({ navigation }) {
      
             <Text style={styles.detailText}>Nimi: {userData.name || "Tietoa ei saatavilla"}</Text>
             <Text style={styles.detailText}>Paikkakunta: {userData.city || "Tietoa ei saatavilla"}</Text>
-              <Text style={styles.detailText}>Esittely: {userData.info || "Tietoa ei saatavilla"}</Text>
+              <Text style={styles.detailText}>{userData.info || "Tietoa ei saatavilla"}</Text>
 
           </View>
         )}
@@ -318,15 +319,31 @@ export default function ProfileScreen({ navigation }) {
       <View style={styles.section}>
       <View style={styles.headerContainer}>
         <Text style={styles.sectionTitle}>Lemmikit</Text>
-        <TouchableOpacity onPress={() => setPetInfo(true)} style={styles.iconButton}>
+        <TouchableOpacity
+      onPress={() => {
+        setPetInfo(true);  
+        setSelectedPetId(null);
+        setNewPetData({
+          name: '',
+          age: '',
+          race: '',
+          gender: '',
+          info: '',
+        });
+        setIsPetSaved(false);  
+      }}
+      style={styles.iconButton}
+    >
           <Feather name="plus" size={28} color='#ff3300' />
         </TouchableOpacity>
       </View>
 
       {petInfo ? (
+        
         <View>
           {petImage && isPetSaved ? (
             <Image source={{ uri: petImage }} style={styles.petImage} />
+            
           ) : (
             !isPetSaved && (
               console.log("ei kuvaa")
@@ -364,6 +381,9 @@ export default function ProfileScreen({ navigation }) {
             onChangeText={(text) => setNewPetData({ ...newPetData, gender: text })}
           />
           <TextInput
+          multiline={true}
+          numberOfLines={6}
+          scrollEnabled={true}
             style={styles.input}
             placeholder="Esittely"
             value={newPetData.info}
@@ -371,19 +391,22 @@ export default function ProfileScreen({ navigation }) {
           />
 
 <Button
-  title="Tallenna muutokset"
-  onPress={async () => {
-    await handleEditPet();
-    setPetInfo(false);
-  }}
-  buttonStyle={{
-    backgroundColor: '#ff3300', 
-    borderRadius: 12, 
-  }}
-  titleStyle={{
-    color: '#ffffff', 
-  }}
-/>
+      title={isPetSaved ? "Tallenna muutokset" : "Lisää lemmikki"}  
+      onPress={async () => {
+        if (isPetSaved) {
+          await handleEditPet(); 
+        } else {
+          await handleAddPet(); 
+        }
+      }}
+      buttonStyle={{
+        backgroundColor: '#ff3300',
+        borderRadius: 12,
+      }}
+      titleStyle={{
+        color: '#ffffff',
+      }}
+    />
 <Button
   title="Peruuta"
   onPress={ () => {
@@ -420,6 +443,7 @@ export default function ProfileScreen({ navigation }) {
                   setSelectedPetId(pet.id);
                   setNewPetData(pet);
                   setPetInfo(true);
+                  setIsPetSaved(true); 
                 }} />
               </TouchableOpacity>
               <TouchableOpacity onPress={() => handleDeletePet(pet.id)}>

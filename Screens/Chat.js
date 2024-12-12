@@ -9,50 +9,63 @@ import { getDatabase, ref, onValue } from 'firebase/database';
 export default function Chat() {
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
-    //const [newMessages, setNewMessages] = useState(false);
     const route = useRoute();
     const { contactEmail } = route.params;
     const auth = getAuth();
     const userEmail = auth.currentUser.email.replace(/\./g, '_');
     const contactEmailKey = contactEmail.replace(/\./g, '_');
     const db = getDatabase();
-    
+
+  
   
     const scrollViewRef = useRef();
     
     
+    //Viestien hakeminen tietokannasta
+      useEffect(() => {
+        const messagesRef = ref(db, `messages`);
+      
+        const unsubscribe = onValue(messagesRef, (snapshot) => {
+          if (snapshot.exists()) {
+            const data = snapshot.val();
+            const allMessages = Object.keys(data).flatMap(key =>
+              Object.values(data[key])
+            );
+      
+            //Suodatetaan viestit
+            const contactMessages = allMessages.filter(
+              (msg) =>
+                (msg.from === userEmail && msg.to === contactEmailKey) ||
+                (msg.from === contactEmailKey && msg.to === userEmail)
+            );
+      
+            const sortedMessages = contactMessages.sort((a, b) => a.timestamp - b.timestamp);
+      
+            const uniqueMessages = [];
+            const messageIds = new Set();
+      
+            sortedMessages.forEach((msg) => {
+              if (!messageIds.has(msg.timestamp)) { 
+                messageIds.add(msg.timestamp);
+                uniqueMessages.push(msg);
+              }
+            });
+      
+            setMessages(uniqueMessages); 
+            scrollViewRef.current.scrollToEnd({ animated: true });
+          } else {
+            setMessages([]);
+          }
+        });
+      
+        return () => unsubscribe();
+      }, [contactEmailKey, userEmail]);
+      
+  
 
 
-    useEffect(() => {
-      const messagesRef = ref(db, `messages`);
-      
-      const unsubscribe = onValue(messagesRef, (snapshot) => {
-        if (snapshot.exists()) {
-          const data = snapshot.val();
-          const allMessages = Object.keys(data).flatMap(key => 
-            Object.values(data[key])
-          );
-  
-          const contactMessages = allMessages.filter(
-            (msg) => 
-              (msg.from === userEmail && msg.to === contactEmailKey) ||
-              (msg.from === contactEmailKey && msg.to === userEmail)
-          );
-    
-  
-         const sortedMessages = contactMessages.sort((a, b) => a.timestamp - b.timestamp);
-          
-          setMessages(sortedMessages); 
-          scrollViewRef.current.scrollToEnd({ animated: true });  
-        } else {
-          setMessages([]);  
-        }
-      });
-      
-      return () => unsubscribe();
-      
-    }, [contactEmailKey, userEmail]);
-  
+
+  //Viestin lähetys 
     const handleSendMessage = async () => {
       if (newMessage.trim() === '') return;
       
@@ -65,7 +78,9 @@ export default function Chat() {
         console.error('Viestin lähetys epäonnistui:', error);
       }
     };
-  
+
+
+    
     return (
       <View style={styles.container}>
         <ScrollView 

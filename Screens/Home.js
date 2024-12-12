@@ -1,5 +1,5 @@
-import { StyleSheet, Text, View, FlatList, ScrollView, TouchableOpacity, TextInput, ActivityIndicator} from 'react-native';
-import { Button, Card } from '@rneui/themed';
+import { StyleSheet, Text, View, FlatList, ScrollView, TouchableOpacity, TextInput} from 'react-native';
+import { Button } from '@rneui/themed';
 import { getAuth } from 'firebase/auth';
 import { database, ref, onValue, update, remove } from '../firebase';
 import React, { useState, useEffect } from 'react';
@@ -7,7 +7,6 @@ import AntDesign from '@expo/vector-icons/AntDesign';
 import { sendMessage } from '../Components/MessageFunc';
 import { Provider, Dialog, Portal, useTheme } from 'react-native-paper';
 import OwnCalendar from '../Components/OwnCalendar';
-import { useFonts } from 'expo-font';
 import Offers from '../Components/Offers';
 
 
@@ -20,8 +19,10 @@ const Home = ({navigation}) => {
   const [ownNotificationsWaiting, setOwnNotificationsWaiting] = useState([])
 
   const [visibleAlert, setVisibleAlert] = useState(false);
+  const [finalAlert, setFinalAlert] = useState(false);
   const theme = useTheme(); 
   const [selectedItem, setSelectedItem] = useState(null);
+  const [isHoitaja, setIsHoitaja] = useState(false);
 
 
 
@@ -49,7 +50,8 @@ const Home = ({navigation}) => {
                         acceptedBy: notification.status?.acceptedBy || "Ei määritelty",
                         createdAt: notification.createdAt || "Ei määritelty",
                         userEmail: notification.userEmail || "Ei määritelty",
-                        dates: notification.dates || "Ei määritelty"
+                        dates: notification.dates || "Ei määritelty",
+                        petDetails: Array.isArray(notification.petDetails) ? notification.petDetails : [],
                     }));
 
                 setNotificationWaiting(waitingNotifications);
@@ -69,12 +71,12 @@ const Home = ({navigation}) => {
 
 
 
-//Hyväksytyt ilmoitukset
+//Hyväksytyt ilmoitukset, näkyy vain jos käyttäjä on ilmoittautunut hoitajaksi
 useEffect(() => {
   const fetchAcceptedNotifications = () => {
     const user = auth.currentUser;
     if (!user) {
-      alert('Käyttäjä ei ole kirjautunut sisään.');
+     console.log("Käyttäjä ei ole kirjautunut sisään.")
       return;
     }
 
@@ -84,6 +86,11 @@ useEffect(() => {
     const unsubscribe = onValue(notificationsRef, (snapshot) => {
       if (snapshot.exists()) {
         const usersData = snapshot.val();
+
+        const currentUserData = usersData[sanitizedEmail];
+        const isHoitaja = currentUserData?.isHoitaja || false;
+        setIsHoitaja(isHoitaja);
+
         const acceptedNotifications = Object.entries(usersData)
           .flatMap(([userKey, userData]) => 
             userData.notifications ? 
@@ -99,16 +106,21 @@ useEffect(() => {
                   acceptedBy: notification.status?.acceptedBy || 'Ei määritelty',
                   createdAt: notification.createdAt || 'Ei määritelty',
                   userEmail: userKey.replace(/_/g, '.'),
-                  dates: notification.dates || "Ei määritelty"
+                  dates: notification.dates || "Ei määritelty",
+                  petDetails: Array.isArray(notification.petDetails) ? notification.petDetails : [],
+                
                 }))
             : []
           );
 
         setOwnNotificationsWaiting(acceptedNotifications);
         console.log("Hyväksytyt ilmoitukset haettu");
+        console.log(isHoitaja)
+      
       } else {
         setOwnNotificationsWaiting([]);
         console.log("Ei löytynyt hyväksyttyjä ilmoituksia");
+        setIsHoitaja(false);
       }
     });
 
@@ -122,34 +134,29 @@ useEffect(() => {
 
 //Ilmoituksen poistaminen tietokannasta
 const handleDeleteNotification = async (item) => {
-  const user = auth.currentUser;
-  if (!user) {
-    alert('Käyttäjä ei ole kirjautunut sisään.');
-    return;
-  }
 
-  const userEmail = user.email.replace(/\./g, '_');
-  const notificationDeleteRef = ref(database, `users/${userEmail}/notifications/${item.id}`);
-  console.log(item.id)
-  console.log(userEmail)
+    const ownerEmailSanitized = item.userEmail.replace(/\./g, '_');
+    const notificationDeleteRef = ref(database, `users/${ownerEmailSanitized}/notifications/${item.id}`);
+  
+    try {
+      await remove(notificationDeleteRef);
+      console.log('Ilmoitus poistettu!');
 
-  try {
-    await remove(notificationDeleteRef);
-    alert('Ilmoitus poistettu!');
-    setPetData(petData.filter(pet => pet.id !== petId));
-  } catch (error) {
-    console.error("Virhe ilmoituksen poistamisessa:", error);
-    alert('Poisto epäonnistui');
-  }
-};
+      setOwnNotificationsWaiting((prevNotifications) =>
+        prevNotifications.filter((notification) => notification.id !== item.id)
+      );
 
+    } catch (error) {
+      console.error('Virhe ilmoituksen poistamisessa:', error);
+    }
+  };
 
 //Kieltäydy hoitajasta, palauttaa tilan "odottaa valintaa"
 const handleDecline = async (item) => {
 
   const user = auth.currentUser;
       if (!user) {
-      alert('Käyttäjä ei ole kirjautunut sisään.');
+      console.log('Käyttäjä ei ole kirjautunut sisään.');
       return;
   }
 
@@ -180,7 +187,7 @@ const handleDecline = async (item) => {
 const handleAcceptRequest = async (item) => {
   const user = auth.currentUser;
   if (!user) {
-      alert('Käyttäjä ei ole kirjautunut sisään.');
+      console.log('Käyttäjä ei ole kirjautunut sisään.');
       return;
   }
 
@@ -207,14 +214,15 @@ const handleAcceptRequest = async (item) => {
       await update(updateStatusAcceptRef, updateStatusAccept);
       console.log("Hyväksyminen onnistui");
 
+      //Lähetetään automaattinen viesti ilmoittautuneelle hoitajalle
       try {
           await sendMessage(
               recieverEmail, 
               `Hei, käyttäjä ${item.userEmail} on hyväksynyt sinut hoitajaksi ${formattedDates}.ajalle! Voitte nyt lähettää toisillenne viestejä hoitoa koskien. Kiitos, että käytätte palveluamme!`);
           console.log("Viesti lähetetty onnistuneesti");
 
-
-          const dateKey = item.dates
+      //Lisätään reservations-tietueeseen varauksen tiedot
+      const dateKey = item.dates
       const availabilityRef = ref(database, `reservations/${recieverEmail}`);
       
           const newAvailability = {
@@ -227,14 +235,13 @@ const handleAcceptRequest = async (item) => {
           };
 
           await update(availabilityRef, newAvailability);
-          //setVisibleAlert(true);
+          setFinalAlert(true)
       } catch (messageError) {
           console.error("Virhe viestin lähettämisessä", messageError);
-          alert("Viestin lähettäminen epäonnistui.");
+         
       }
   } catch (error) {
       console.error("Virhe hyväksynnässä", error);
-      alert("Hyväksyntä epäonnistui.");
   }
 };
 
@@ -245,13 +252,25 @@ const handleAcceptRequest = async (item) => {
  
     <View style={{ padding: 10, borderBottomWidth: 1 }}>
     <Text style={styles.serviceText}>Palvelu: {item.service}</Text>
-    <Text style={styles.acceptedByText}>Ilmoittautunut hoitaja: {item.acceptedBy}</Text>
+    <Text style={styles.acceptedByText}>Hoitaja: {item.acceptedBy}</Text>
     <Text>
     Hoidontarve:{' '}
     {item.dates
     .map((date) => new Date(date).toLocaleDateString('fi-FI'))
     .join(', ')}
     </Text>
+    <Text style={{ fontWeight: 'bold' }}>Hoidettavat lemmikit:</Text>
+    {item.petDetails && item.petDetails.length > 0 ? (
+      item.petDetails.map((pet, index) => (
+        <View key={index}>
+          <Text>Lemmikin nimi: {pet.name}</Text>
+          <Text>Sukupuoli: {pet.gender}</Text>
+          <Text>Rotu: {pet.race}</Text>
+        </View>
+      ))
+    ) : (
+      <Text>Ei valittuja lemmikkejä</Text>
+    )}
     <Text>Luotu: {new Date(item.createdAt).toLocaleString('fi-FI', {
     year: 'numeric',
     month: '2-digit',
@@ -314,9 +333,9 @@ const handleAcceptRequest = async (item) => {
               )}
             </View>
           </View>
-          
+          {isHoitaja && (
         <View style={styles.bodyContainer}>
-          <Text style={styles.headerText2}>Hyväksytyt varaukset</Text>
+          <Text style={styles.headerText2}>Hyväksytyt hoitovaraukset</Text>
           <View style={styles.notificationContainer}>
            
               {ownNotificationsWaiting.length === 0 ? (
@@ -331,11 +350,16 @@ const handleAcceptRequest = async (item) => {
               )}
            
           </View>
+          </View>
+          )}
+          <View style={styles.bodyContainer}>
+          <Text style={styles.calendarHeader}> Omat varatut palvelut</Text>
           <View style={styles.calendarContainer}>
-          <Text style={styles.calendarHeader}> Varatut palvelut</Text>
+
           <OwnCalendar userEmail={auth.currentUser.email.replace(/\./g, '_')} database={database} />
         </View>
         </View>
+        
   
         <Portal>
   <Dialog visible={visibleAlert} onDismiss={() => setVisibleAlert(false)}
@@ -392,7 +416,8 @@ const handleAcceptRequest = async (item) => {
             if (selectedItem) {
               handleAcceptRequest(selectedItem);
               setVisibleAlert(false);
-              alert('Maksu onnistui!');
+              setFinalAlert(true);
+             
             }
           }}
           buttonStyle={{
@@ -406,6 +431,24 @@ const handleAcceptRequest = async (item) => {
           Maksa
         </Button>
       </View>
+    </Dialog.Actions>
+  </Dialog>
+  </Portal>
+<Portal>
+  <Dialog visible={finalAlert} onDismiss={() => setFinalAlert(false)}
+    style={{ backgroundColor: '#f2f2f2'  }}>
+    <Dialog.Title></Dialog.Title>
+    <Dialog.Content>
+      <Text>Maksu onnistui!</Text>
+    </Dialog.Content>
+    <Dialog.Actions>
+    <Button
+      onPress={() => setFinalAlert(false)}
+      buttonStyle={{ backgroundColor: '#ff3300', borderRadius: 12 }}
+      titleStyle={{ color: '#ffffff' }}
+    >
+    Sulje
+    </Button>
     </Dialog.Actions>
   </Dialog>
 </Portal>
@@ -429,10 +472,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     textAlign: 'center',
-    borderWidth:0,
+    borderWidth:0.1,
     backgroundColor: '#ffffff',
+    //backgroundColor: '#ff3300',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
+    padding:4,
 
   },
   descriptionText: {
@@ -541,21 +586,30 @@ acceptIcon:{
     backgroundColor: '#f7f7f7',
   },
   calendarContainer: {
-    marginTop: 20,
+    //marginTop: 20,
     padding: 10,
     backgroundColor: '#ffffff',
-    borderRadius: 8,
+    borderRadius: 16,
     shadowColor: '#000',
     shadowOffset: { width: 1, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 2,
     marginBottom: 16,
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
   },
   calendarHeader: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 10,
+   // marginBottom: 10,
+    textAlign:'center',
+    //borderWidth:1,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    backgroundColor:'#ff3300',
+    color:'#ffffff',
+    padding:4
   },
 
 });

@@ -14,56 +14,63 @@ export default function Messages({onClearBadge}) {
   const [newMessage, setNewMessage] = useState('');
   const [receiverEmail, setReceiverEmail] = useState('');
   const navigation = useNavigation();
+  const userEmail = auth.currentUser.email.replace(/\./g, '_');
 
-//Uusien viestin ilmoitus punaisella pallolla
 useEffect(() => {
   const fetchMessagesData = setTimeout(() => {
-    //setMessages([{ id: 1, content: 'Uusi viesti!' }]); 
+  
     if (onClearBadge) onClearBadge(); 
   }, 2000);
 
   return () => clearTimeout(fetchMessagesData);
 }, [onClearBadge]);
 
+//Haetaan viestit ja suodatetaan ne yksittäisiksi keskusteluiksi
 useEffect(() => {
   fetchMessages((messages) => {
-    const uniqueContacts = Object.keys(messages);  
+    const uniqueContacts = Object.keys(messages); 
     const contactsWithImages = uniqueContacts.map(async (contact) => {
+      if (contact === userEmail) return null; 
+
+      //Haetaan samalla käyttäjien profiilikuvat
       let profileImage = null;
       try {
         await fetchProfileImage(
           (imageUri) => {
             profileImage = imageUri;
           },
-          { currentUser: { email: contact.replace(/_/g, '.') } }, 
+          { currentUser: { email: contact.replace(/_/g, '.') } },
           database
         );
       } catch (error) {
         console.error(`Profiilikuvan haku epäonnistui: ${contact}, virhe: ${error}`);
       }
-      return { email: contact, profileImage }; 
+      return { email: contact, profileImage };
     });
+
 
     Promise.all(contactsWithImages).then((contactsData) => {
-      setContacts(contactsData); // Varmistetaan, että contacts päivitetään
+
+      const filteredContacts = contactsData.filter((contact) => contact !== null);
+      setContacts(filteredContacts); 
     });
   });
-}, []);
+}, [userEmail]);
 
 
 
 
-
+//näytetään komponentti jolla voi lähettää viestin
 const toggleMessageForm = () => {
   setShowMessageForm((prev) => !prev); 
 };
 
 const handleSendMessage = async () => {
   try {
-    await sendMessage(receiverEmail, newMessage);  // Lähetetään viesti
+    await sendMessage(receiverEmail, newMessage);  
     alert('Viestisi on lähetetty!');
 
-    // Päivitetään viestit ja yhteystiedot
+
     fetchMessages((messages) => {
       const uniqueContacts = Object.keys(messages);
       const contactsWithImages = uniqueContacts.map(async (contact) => {
@@ -82,10 +89,10 @@ const handleSendMessage = async () => {
         return { email: contact, profileImage };
       });
 
-      // Odotetaan kaikkien profiilikuvien lataamista ja päivitetään contacts
+
       Promise.all(contactsWithImages).then((contactsData) => {
-        setContacts(contactsData); // Päivitetään yhteystiedot, jolloin uusi viestiketju näkyy
-        console.log(contactsData);  // Varmistetaan, että uusi viesti ilmestyy
+        setContacts(contactsData); 
+        console.log(contactsData);  
       });
     });
 
@@ -109,7 +116,7 @@ return (
       renderItem={({ item }) => (
         <TouchableOpacity
           onPress={() => {
-            navigation.navigate('Viestit', { contactEmail: item.email });
+            navigation.navigate('Chat', { contactEmail: item.email });
             if (onClearBadge) onClearBadge();
           }}
           style={styles.contactItem}

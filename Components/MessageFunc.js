@@ -2,21 +2,23 @@ import { getDatabase, ref, push, set, onValue } from 'firebase/database';
 import { getAuth } from 'firebase/auth';
 
 
-
+//Funktio viestin lähetykseen
 export const sendMessage = async (receiverEmail, messageText) => {
   const db = getDatabase();
   const auth = getAuth();
   const sender = auth.currentUser;
+
  
 
   if (!sender) {
-    alert('Kirjaudu sisään lähettääksesi viestin.');
+    console.log('Kirjaudu sisään lähettääksesi viestin.');
     return;
   }
 
   const senderEmail = sender.email.replace(/\./g, '_');
   const receiverEmailKey = receiverEmail.replace(/\./g, '_');
 
+  //Tietokantaan tallentuvat tiedot
   const messageData = {
     from: senderEmail,
     to: receiverEmailKey,
@@ -24,6 +26,8 @@ export const sendMessage = async (receiverEmail, messageText) => {
     timestamp: Date.now(),
   };
 
+  //Lähettäjälle ja vastaanottajalle tallennetaan viestit molempien 
+  //sähköpostien alle.
   const senderMessagesRef = ref(db, `messages/${senderEmail}`);
   const receiverMessagesRef = ref(db, `messages/${receiverEmailKey}`);
 
@@ -32,19 +36,18 @@ export const sendMessage = async (receiverEmail, messageText) => {
     await set(push(receiverMessagesRef), messageData);
   } catch (error) {
     console.error('Viestin lähetys epäonnistui:', error);
-    alert('Viestin lähetys epäonnistui.');
   }
 };
 
 
-
+//Haetaan viestit tietokannasta
 export const fetchMessages = (setMessages) => {
   const db = getDatabase();
   const auth = getAuth();
   const user = auth.currentUser;
 
   if (!user) {
-    alert('Kirjaudu sisään nähdäksesi viestit.');
+    console.log('Kirjaudu sisään nähdäksesi viestit.');
     return;
   }
 
@@ -53,7 +56,8 @@ export const fetchMessages = (setMessages) => {
 
   onValue(messagesRef, (snapshot) => {
     if (snapshot.exists()) {
-      const data = snapshot.val();
+      const data = snapshot.val();  
+        //Käydään viestit läpi
       const messagesArray = Object.keys(data).map((key) => ({
         id: key,
         ...data[key],

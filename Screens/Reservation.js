@@ -1,13 +1,13 @@
-import { View, Text, TextInput, StyleSheet, Alert, TouchableOpacity, ScrollView, Modal, Image } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Alert, TouchableOpacity, ScrollView, Modal } from 'react-native';
 import React, { useState, useEffect } from 'react';
 import { Button } from '@rneui/base';
-import { database, ref, get, push } from '../firebase';
+import { database, ref, get, push, onValue } from '../firebase';
 import { getAuth } from 'firebase/auth';
 import { CheckBox } from '@rneui/themed';
 import { Menu, Provider, Dialog, Portal, useTheme } from 'react-native-paper';
 import { Calendar } from 'react-native-calendars';
 import SimpleLineIcons from '@expo/vector-icons/SimpleLineIcons';
-import OwnCalendar from '../Components/OwnCalendar';
+
 
 
 export default function Reservation({navigation}) {
@@ -28,7 +28,7 @@ export default function Reservation({navigation}) {
     const [serviceInfo, setServiceInfo] = useState('');
     const [selectedDates, setSelectedDates] = useState({}); 
     const [reservations, setReservations] = useState({}); 
-    //const currentDate = new Date().toISOString().split('T')[0];
+    const currentDate = new Date().toISOString().split('T')[0];
 
 
      const theme = useTheme(); 
@@ -42,7 +42,7 @@ export default function Reservation({navigation}) {
         const fetchData = async () => {
             const user = auth.currentUser;
             if (!user) {
-                alert('Käyttäjä ei ole kirjautunut sisään.');
+                console.log('Käyttäjä ei ole kirjautunut sisään.');
                 return;
             }
             const userEmail = user.email.replace(/\./g, '_');
@@ -99,12 +99,12 @@ export default function Reservation({navigation}) {
     //Vahvistetaan ilmoitus ja tallennetaan se tietokantaan
     const handleSubmit = () => {
       if (!selectedService || selectedPets.length === 0) {
-        Alert.alert('Valitse palvelu ja vähintään yksi lemmikki.');
+        alert('Valitse palvelu ja vähintään yksi lemmikki.');
         return;
     }
       const user = auth.currentUser;
       if (!user) {
-          Alert.alert('Käyttäjä ei ole kirjautunut sisään.');
+          console.log('Käyttäjä ei ole kirjautunut sisään.');
           return;
       }
  
@@ -112,15 +112,19 @@ export default function Reservation({navigation}) {
         const userEmail = user.email.replace(/\./g, '_');
         const notificationsRef = ref(database, `users/${userEmail}/notifications`);
 
-        const selectedPetNames = petData
+        const selectedPetDetails = petData
         .filter(pet => selectedPets.includes(pet.id))
-        .map(pet => pet.name);
+        .map(pet => ({
+          name: pet.name,
+          gender:pet.gender,
+          race: pet.race,
+        }));
 
         //Ilmoituksen tiedot
         const newNotification = {
             service: selectedService,
             pets: selectedPets,
-            petNames:selectedPetNames,
+            petDetails:selectedPetDetails,
             dates:Object.keys(selectedDates), 
             additionalInfo: {
                 getsAlong: checked1,
@@ -146,21 +150,20 @@ export default function Reservation({navigation}) {
             })
             .catch((error) => {
                 console.error('Virhe tietokantaan tallennuksessa:', error);
-                Alert.alert('Ilmoituksen luonti epäonnistui.');
             });  
     };
 
 
-   /* useEffect(() => {
+    useEffect(() => {
       const user = auth.currentUser;
     
       if (!user) {
-        alert('Käyttäjä ei ole kirjautunut sisään.');
+        console.log('Käyttäjä ei ole kirjautunut sisään.');
         return;
       }
       
       if (!user.email) {
-        alert('Käyttäjän sähköpostiosoite ei ole saatavilla.');
+        console.log('Käyttäjän sähköpostiosoite ei ole saatavilla.');
         return;
       }
     
@@ -174,26 +177,24 @@ export default function Reservation({navigation}) {
         if (snapshot.exists()) {
           const fetchedNotifications = snapshot.val();
           if (!fetchedNotifications) {
-            console.error("Fetched notifications are undefined.");
+            console.error("undefined.");
             return;
           }
           const formattedReservations = Object.keys(fetchedNotifications).reduce((acc, notificationId) => {
             const notification = fetchedNotifications[notificationId];
             if (!notification) {
-              console.error(`Notification with id ${notificationId} is undefined.`);
+              console.error(` undefined.`);
               return acc;
             }
     
             if (Array.isArray(notification.dates)) {
               notification.dates.forEach((date) => {
-                if (notification.status.value === "hyväksytty") {
-                  acc[date] = {
-                    startingDay: true,
-                    endingDay: true,
-                    color: 'red',
-                    textColor: 'white',
-                  };
-                }
+                acc[date] = {
+                  startingDay: true,
+                  endingDay: true,
+                  color: 'red',  
+                  textColor: 'white',  
+                };
               });
             }
             return acc;
@@ -204,7 +205,7 @@ export default function Reservation({navigation}) {
           console.log('Ei löytynyt varauksia');
         }
       });
-    }, [database]);  */
+    }, [database]);  
 
 
   //Hoidon päivämäärän valinta
@@ -232,10 +233,10 @@ export default function Reservation({navigation}) {
   };
 
 
- /*   const combinedMarked={
+   const combinedMarked={
       ...selectedDates,
       ...reservations,
-    }*/
+    }
   
 
     return (
@@ -288,10 +289,13 @@ export default function Reservation({navigation}) {
             setSelectedService('Muu ');
             closeMenu();
             }}
-            title="Muu palvelu, kirjoita lisätietoihin"
+            title="Muu palvelu, kirjoita lisätietoihin /10€"
             />
             </Menu>
         <TextInput
+          multiline={true}
+          numberOfLines={6}
+          scrollEnabled={true}
         style={styles.input}
         placeholder="Muu palvelu, kirjoita lisätiedot"
         value={serviceInfo}
@@ -301,9 +305,12 @@ export default function Reservation({navigation}) {
         <View style={styles.CalendarContainer}>
         <Text style={styles.dateText}>Valitse päivämäärät</Text>
         <Calendar
+        minDate={currentDate}
+        firstDay={1}
         markingType={'period'}
-        markedDates={selectedDates}
+        markedDates={combinedMarked}
         onDayPress={handleDayPress}
+        
         theme={{
           selectedDayBackgroundColor: 'blue',
           todayTextColor: 'red',
@@ -366,7 +373,7 @@ export default function Reservation({navigation}) {
             containerStyle={styles.checkboxContainer}
             />
                 <CheckBox
-                    title="Hoitajalla ei saa olla muita lemmikkejä"
+                    title="Hoitajalla voi olla muita lemmikkejä"
                     checked={checked2}
                     onPress={() => setChecked2(!checked2)}
                     containerStyle={styles.checkboxContainer}
@@ -378,6 +385,9 @@ export default function Reservation({navigation}) {
                     containerStyle={styles.checkboxContainer}
                 />
                 <TextInput
+                  multiline={true}
+                  numberOfLines={6}
+                  scrollEnabled={true}
                     style={styles.input}
                     placeholder="Muuta huomioitavaa"
                     value={moreInfo}
@@ -397,7 +407,8 @@ export default function Reservation({navigation}) {
     <Portal>
         <Dialog
             visible={visibleAlert}
-            onDismiss={() => setVisibleAlert(false)}>
+            onDismiss={() => setVisibleAlert(false)}
+            style={{ backgroundColor: '#f2f2f2'  }}>
             <Dialog.Title>Ilmoitus luotu onnistuneesti!</Dialog.Title>
             <Dialog.Content>
                 <Text>Ilmoitus on nyt siirretty odottamaan hoitajan valintaa. Kun hoitaja ilmoittautuu tähän varaukseen, voit vahvistaa varauksen ja hoitajan kotisivultasi!</Text>

@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View, ImageBackground, KeyboardAvoidingView, Platform } from 'react-native';
-import { useNavigation } from '@react-navigation/core';
+//import { useNavigation } from '@react-navigation/core';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
-import { firebase } from '../firebase';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { StatusBar } from 'react-native';
+//import { firebase } from '../firebase';
+
 
 const LoginScreen = ({ navigation }) => {
  const imageUrl = 'https://firebasestorage.googleapis.com/v0/b/koirakaweri.appspot.com/o/punainenlogo.jpg?alt=media&token=e6a7f0ef-4eef-42d8-abc1-6ed189aefd3a';
@@ -31,6 +30,8 @@ const LoginScreen = ({ navigation }) => {
   }
   };
 
+
+  
   return (
    
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -45,6 +46,7 @@ const LoginScreen = ({ navigation }) => {
               value={email}
               onChangeText={setEmail}
               keyboardType='email-address'
+              autoCapitalize="none"
             />
             <TextInput
               placeholder='Salasana'
@@ -52,6 +54,7 @@ const LoginScreen = ({ navigation }) => {
               value={password}
               onChangeText={setPassword}
               secureTextEntry
+              autoCapitalize="none"
             />
             {error && <Text style={styles.errorText}>{error}</Text>}
           </View>
